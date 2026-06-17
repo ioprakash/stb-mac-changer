@@ -66,40 +66,99 @@ adb reboot
 
 ---
 
-## Automation Utility (`change_mac.py`)
-`change_mac.py` is a Python 3 CLI script that automates the steps described above. It automatically locates the ADB binary, detects connected devices, validates MAC formatting, and applies changes.
+## Advanced Permanent MAC Changer Methods (For Allwinner STBs)
 
-### Requirements
-- Python 3.x installed on your PC.
-- ADB installed (the script automatically searches for it on your `PATH` or in `C:\adb\adb.exe`).
+On Allwinner Set-Top Boxes, the MAC address is parsed by U-Boot during the boot sequence and injected into the Linux kernel cmdline. We can persist the MAC address using three methods:
 
-### Usage Instructions
+### Method 1: Automatic Startup Script (Safest & Most Practical)
+This method keeps a startup shell script on the device that automatically runs on every boot and changes the MAC address before the network service configures it.
 
-Open your terminal/command prompt, navigate to this directory, and run the script:
+#### Setup Process:
+1. Create a script named `init.macchanger.sh`:
+   ```bash
+   #!/system/bin/sh
+   ip link set eth0 down
+   ip link set eth0 address 90:0e:b3:bc:42:fd
+   ip link set eth0 up
+   ```
+2. Copy this script to the device's `/data/local/tmp/` directory:
+   ```bash
+   adb push init.macchanger.sh /data/local/tmp/
+   ```
+3. Use root permissions to place it in the system initialization scripts directory (e.g., `/system/etc/init.d/` if supported, or register it as a service in `/vendor/etc/init/hw/init.sun50iw9p1.rc`):
+   ```bash
+   adb shell "echo 'cp /data/local/tmp/init.macchanger.sh /system/etc/init.d/99macchanger && chmod 755 /system/etc/init.d/99macchanger' | su"
+   ```
 
-#### 1. Show Help Menu
-```bash
-python change_mac.py --help
-```
+---
 
-#### 2. Apply Both Temporary and Permanent Changes (Recommended)
-This changes the MAC address of `eth0` instantly, updates the settings database, and automatically sends a reboot command:
-```bash
-python change_mac.py --mac 90:0e:b3:bc:42:fd --mode both --reboot
-```
+### Method 2: U-Boot Env Partition Patching (Medium Risk)
+The boot arguments (visible in `/proc/cmdline`) contain `mac_addr=90:0E:B3:98:01:8D`. This is read directly from the `env` partition (`/dev/block/mmcblk0p2`). 
 
-#### 3. Change MAC Address Temporarily Only (No Reboot)
-```bash
-python change_mac.py --mac 90:0e:b3:bc:42:fd --mode temp
-```
+This partition has a **CRC32 Checksum** header. If the checksum doesn't match the variables block, the bootloader resets the environment, causing a boot loop or entering recovery.
 
-#### 4. Change MAC Address Permanently Only (No Auto-Reboot)
-```bash
-python change_mac.py --mac 90:0e:b3:bc:42:fd --mode perm
-```
+We have created an automated patcher script: [patch_env.py](file:///D:/code/stb_mac_changer_project/patch_env.py) to parse and recalculate this checksum.
 
-#### 5. Change MAC Address on a Specific Interface
-If your Ethernet interface has a different name (e.g., `eth1`):
-```bash
-python change_mac.py --mac 90:0e:b3:bc:42:fd -i eth1
-```
+#### Execution Process:
+1. **Dump the Env Partition** from the STB:
+   ```bash
+   adb shell "echo 'dd if=/dev/block/mmcblk0p2 bs=1024 count=128' | su" > env.img
+   ```
+2. **Patch the MAC address** using `patch_env.py` on your PC:
+   ```bash
+   python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd --output env_patched.img
+   ```
+3. **Push the patched image** back to the STB:
+   ```bash
+   adb push env_patched.img /data/local/tmp/env_patched.img
+   ```
+4. **Flash it** to the partition:
+   ```bash
+   adb shell "echo 'dd if=/data/local/tmp/env_patched.img of=/dev/block/mmcblk0p2' | su"
+   ```
+5. **Reboot the device**:
+   ```bash
+   adb reboot
+   ```
+
+---
+
+### Method 3: Private Partition Modification (High Risk)
+Allwinner systems often store physical calibration keys (e.g., Wi-Fi, Ethernet MAC, Serial Number) inside `/dev/block/mmcblk0p12` (`private` partition).
+
+#### Process to Check/Patch:
+1. **Dump the Private Partition**:
+   ```bash
+   adb shell "echo 'dd if=/dev/block/mmcblk0p12 bs=1024 count=128' | su" > private.img
+   ```
+2. **Analyze for MAC entries**:
+   You can search for the ASCII representation of the original MAC (`90:0E:B3:98:01:8D` or `900eb398018d`) using a hex editor or `strings`:
+   ```bash
+   strings private.img | grep -i 90
+   ```
+3. **Patch and flash**:
+   Modify the hex location of the MAC in `private.img` using a hex editor, and flash it back using:
+   ```bash
+   adb push private_patched.img /data/local/tmp/private_patched.img
+   adb shell "echo 'dd if=/data/local/tmp/private_patched.img of=/dev/block/mmcblk0p12' | su"
+   ```
+   *Note: Modifying this partition carries the highest risk of wiping your device's activation keys.*
+
+---
+
+## Automation Utilities
+
+### 1. MAC Address Auto-Changer (`change_mac.py`)
+`change_mac.py` is a Python 3 CLI script that automates the Android system settings and temporary changes.
+
+#### Usage:
+- Get help: `python change_mac.py --help`
+- Apply changes: `python change_mac.py --mac 90:0e:b3:bc:42:fd --mode both --reboot`
+
+### 2. U-Boot env Patcher (`patch_env.py`)
+`patch_env.py` handles U-Boot CRC32 checks and variable manipulation.
+
+#### Usage:
+- Dump env contents: `python patch_env.py env.img --dump`
+- Modify a variable: `python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd`
+
