@@ -155,10 +155,17 @@ Allwinner systems often store physical calibration keys (e.g., Wi-Fi, Ethernet M
 - Get help: `python change_mac.py --help`
 - Apply changes: `python change_mac.py --mac 90:0e:b3:bc:42:fd --mode both --reboot`
 
-### 2. U-Boot env Patcher (`patch_env.py`)
-`patch_env.py` handles U-Boot CRC32 checks and variable manipulation.
+### 2. U-Boot env Patcher (`patch_env.py` - Standard/Allwinner)
+`patch_env.py` handles standard U-Boot CRC32 checks and variable manipulation.
 
 #### Usage:
 - Dump env contents: `python patch_env.py env.img --dump`
 - Modify a variable: `python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd`
+
+### 3. Amlogic U-Boot Patcher (`patch_env_amlogic.py` - Skycom/Amlogic)
+`patch_env_amlogic.py` handles auto-detection of the 64KB environment block within the 8MB partition dump, and automatically patches the U-Boot `cmdline_keys` and `storeargs` macros to inject the new MAC address directly (bypassing the secure key/eFuse reading).
+
+#### Usage:
+- Dump env contents: `python patch_env_amlogic.py skycom_env.img --dump --new-mac D0:76:58:54:93:99`
+- Patch env contents: `python patch_env_amlogic.py skycom_env.img --new-mac D0:76:58:54:93:99 --output skycom_env_patched.img`
 
