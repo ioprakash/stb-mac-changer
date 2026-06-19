@@ -305,7 +305,7 @@ def main():
         print(f"[!] Remount command response: {remount_out} {remount_err}")
         # Try direct overlayfs remount
         exec_root("mount -o remount,rw /system")
-        
+    
     # Verify system write access
     rw_check, _ = exec_root("mount | grep -i '/system '")
     print(f"[*] /system Mount: {rw_check}")
@@ -405,10 +405,26 @@ fi
     # 8. Reboot if requested
     if args.reboot:
         print("[*] Rebooting STB to apply all changes...")
-        adb_cmd(adb, ["reboot"], target_device)
-        print("[+] Reboot command sent. Please verify the new MAC address is permanently applied upon boot.")
+        # Fire-and-forget: adb reboot drops the network connection instantly,
+        # so subprocess.run() would hang forever. Use Popen without waiting.
+        reboot_cmd = [adb]
+        if target_device:
+            reboot_cmd.extend(["-s", target_device])
+        reboot_cmd.append("reboot")
+        subprocess.Popen(reboot_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(2)  # Brief pause to let the command reach the device
+        print("[+] Reboot command sent.")
     else:
         print("\n[!] Setup complete. Please reboot the STB to apply changes permanently.")
+    
+    print("\n" + "="*60)
+    print("[+] ALL STEPS COMPLETED SUCCESSFULLY!")
+    print(f"[+] Target MAC: {mac_upper}")
+    print("="*60)
+    print("\nVerify after reboot with:")
+    print(f'  adb connect {args.ip or target_device}')
+    print(f'  adb shell "echo mac > /sys/class/unifykeys/name && cat /sys/class/unifykeys/read"')
+    print(f'  adb shell "ip link show eth0"')
 
 if __name__ == "__main__":
     main()
