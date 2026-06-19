@@ -218,7 +218,34 @@ def main():
     # 3. Elevate to root
     print("[*] Elevating ADB to root...")
     adb_cmd(adb, ["root"], target_device)
-    time.sleep(1)
+    
+    # If the target device is connected via TCP/IP, the connection will break.
+    # We must wait and run 'adb connect' again to re-establish the connection.
+    is_network_device = ":" in target_device or args.ip is not None
+    if is_network_device:
+        ip_port = target_device
+        if args.ip and ":" not in target_device:
+            ip_port = f"{args.ip}:5555"
+        
+        print(f"[*] Network device detected. Reconnecting to {ip_port}...")
+        # Retry connect loop up to 5 times
+        connected = False
+        for attempt in range(1, 6):
+            time.sleep(2)
+            print(f"[*] Connection attempt {attempt}/5...")
+            stdout, stderr = run_cmd([adb, "connect", ip_port])
+            if "connected to" in stdout.lower():
+                print(f"[+] Reconnected successfully on attempt {attempt}.")
+                connected = True
+                break
+        if not connected:
+            print("[-] Warning: Failed to reconnect to network device. Commands might fail/hang.")
+    else:
+        print("[*] Waiting 2 seconds for adbd to restart...")
+        time.sleep(2)
+        
+    print("[*] Waiting for device to come back online...")
+    adb_cmd(adb, ["wait-for-device"], target_device)
     
     uid_check, _ = adb_cmd(adb, ["shell", "id -u"], target_device)
     if uid_check != "0":
