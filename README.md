@@ -13,7 +13,7 @@ This repository contains utility scripts, reference configurations, and automate
    * **Documentation**: See standard instructions below.
 
 2. **Amlogic Skycom STBs**
-   * **Documentation**: Detailed technical guide in [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md).
+   * **Documentation**: Detailed technical guide in [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md) and step-by-step manual commands in [SKYCOM_MANUAL_STEPS.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MANUAL_STEPS.md).
    * **Automated Script**: [change_mac_final.py](file:///d:/code/stb_mac_changer_project/change_mac_final.py).
 
 ---
@@ -28,7 +28,7 @@ For Amlogic-based Skycom STBs, the MAC address is locked at multiple layers (Har
 python change_mac_final.py --ip 192.168.1.108 --mac D0:76:58:54:93:99 --reboot
 ```
 
-For a detailed breakdown of how this is implemented, refer to [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md).
+For a detailed breakdown of how this is implemented, refer to [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md) or the manual step-by-step instructions in [SKYCOM_MANUAL_STEPS.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MANUAL_STEPS.md).
 
 ---
 
