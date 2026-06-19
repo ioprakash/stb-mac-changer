@@ -113,7 +113,7 @@ adb shell "rm /data/local/tmp/env.img"
 ### 2. Patch the partition image:
 On your PC, run the python patcher to replace the original MAC address and modify the boot args macros:
 ```bash
-python patch_env_amlogic.py local_env.img --new-mac D0:76:58:54:94:99 --output local_env_patched.img
+python Patch-Env-Amlogic-SKYCOM.py local_env.img --new-mac D0:76:58:54:94:99 --output local_env_patched.img
 ```
 
 ### 3. Flash the patched image back to the partition:

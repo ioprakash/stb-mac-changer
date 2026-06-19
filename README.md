@@ -14,7 +14,7 @@ This repository contains utility scripts, reference configurations, and automate
 
 2. **Amlogic Skycom STBs**
    * **Documentation**: Detailed technical guide in [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md) and step-by-step manual commands in [SKYCOM_MANUAL_STEPS.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MANUAL_STEPS.md).
-   * **Automated Script**: [change_mac_final.py](file:///d:/code/stb_mac_changer_project/change_mac_final.py).
+   * **Automated Script**: [Mac-Change-Amlogic-SKYCOM.py](file:///d:/code/stb_mac_changer_project/Mac-Change-Amlogic-SKYCOM.py).
 
 ---
 
@@ -25,7 +25,7 @@ For Amlogic-based Skycom STBs, the MAC address is locked at multiple layers (Har
 ### Usage:
 ```bash
 # Connect the STB over network ADB and execute:
-python change_mac_final.py --ip 192.168.1.108 --mac D0:76:58:54:93:99 --reboot
+python Mac-Change-Amlogic-SKYCOM.py --ip 192.168.1.108 --mac D0:76:58:54:93:99 --reboot
 ```
 
 For a detailed breakdown of how this is implemented, refer to [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md) or the manual step-by-step instructions in [SKYCOM_MANUAL_STEPS.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MANUAL_STEPS.md).
@@ -109,7 +109,7 @@ The boot arguments (visible in `/proc/cmdline`) contain `mac_addr=90:0E:B3:98:01
 
 This partition has a **CRC32 Checksum** header. If the checksum doesn't match the variables block, the bootloader resets the environment, causing a boot loop or entering recovery.
 
-We have created an automated patcher script: [patch_env.py](file:///D:/code/stb_mac_changer_project/patch_env.py) to parse and recalculate this checksum.
+We have created an automated patcher script: [Patch-Env-Generic-SKYCOM.py](file:///D:/code/stb_mac_changer_project/Patch-Env-Generic-SKYCOM.py) to parse and recalculate this checksum.
 
 #### Execution Process:
 1. **Dump the Env Partition** from the STB:
@@ -118,7 +118,7 @@ We have created an automated patcher script: [patch_env.py](file:///D:/code/stb_
    ```
 2. **Patch the MAC address** using `patch_env.py` on your PC:
    ```bash
-   python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd --output env_patched.img
+    python Patch-Env-Generic-SKYCOM.py env.img --set mac_addr=90:0e:b3:bc:42:fd --output env_patched.img
    ```
 3. **Push the patched image** back to the STB:
    ```bash
@@ -137,16 +137,16 @@ We have created an automated patcher script: [patch_env.py](file:///D:/code/stb_
 
 ## Automation Utilities
 
-### 1. MAC Address Auto-Changer (`change_mac.py`)
-`change_mac.py` is a Python 3 CLI script that automates the Android system settings and temporary changes for Allwinner devices.
-* Usage: `python change_mac.py --mac 90:0e:b3:bc:42:fd --mode both --reboot`
+### 1. MAC Address Auto-Changer (`Mac-Change-Generic-SKYCOM.py`)
+`Mac-Change-Generic-SKYCOM.py` is a Python 3 CLI script that automates the Android system settings and temporary changes for Allwinner devices.
+* Usage: `python Mac-Change-Generic-SKYCOM.py --mac 90:0e:b3:bc:42:fd --mode both --reboot`
 
-### 2. U-Boot env Patcher (`patch_env.py` - Standard/Allwinner)
-`patch_env.py` handles standard U-Boot CRC32 checks and variable manipulation.
-* Usage: `python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd`
+### 2. U-Boot env Patcher (`Patch-Env-Generic-SKYCOM.py` - Standard/Allwinner)
+`Patch-Env-Generic-SKYCOM.py` handles standard U-Boot CRC32 checks and variable manipulation.
+* Usage: `python Patch-Env-Generic-SKYCOM.py env.img --set mac_addr=90:0e:b3:bc:42:fd`
 
-### 3. Amlogic U-Boot Patcher (`patch_env_amlogic.py` - Skycom/Amlogic)
-`patch_env_amlogic.py` handles auto-detection of the 64KB environment block within the 8MB partition dump, and automatically patches the U-Boot `cmdline_keys` and `storeargs` macros to inject the new MAC address directly.
-* Usage: `python patch_env_amlogic.py skycom_env.img --new-mac D0:76:58:54:93:99 --output skycom_env_patched.img`
+### 3. Amlogic U-Boot Patcher (`Patch-Env-Amlogic-SKYCOM.py` - Skycom/Amlogic)
+`Patch-Env-Amlogic-SKYCOM.py` handles auto-detection of the 64KB environment block within the 8MB partition dump, and automatically patches the U-Boot `cmdline_keys` and `storeargs` macros to inject the new MAC address directly.
+* Usage: `python Patch-Env-Amlogic-SKYCOM.py skycom_env.img --new-mac D0:76:58:54:93:99 --output skycom_env_patched.img`
 
 

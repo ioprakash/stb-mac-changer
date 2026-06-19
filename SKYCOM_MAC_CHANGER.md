@@ -1,6 +1,6 @@
 # Skycom Amlogic STB Permanent MAC Changer
 
-This guide explains how to use the automated python script [change_mac_final.py](file:///d:/code/stb_mac_changer_project/change_mac_final.py) to permanently change the MAC address of a Skycom Amlogic Set-Top Box (STB) with root access.
+This guide explains how to use the automated python script [Mac-Change-Amlogic-SKYCOM.py](file:///d:/code/stb_mac_changer_project/Mac-Change-Amlogic-SKYCOM.py) to permanently change the MAC address of a Skycom Amlogic Set-Top Box (STB) with root access.
 
 The script is self-contained and handles all levels of modification required to make the change persistent across reboots, factory resets (except partition reflashing), and launcher updates.
 
@@ -42,10 +42,10 @@ Open a terminal in this directory and execute the script with the desired target
 
 ```bash
 # If the STB is connected over USB:
-python change_mac_final.py --mac D0:76:58:54:93:99 --reboot
+python Mac-Change-Amlogic-SKYCOM.py --mac D0:76:58:54:93:99 --reboot
 
 # If the STB is on the network (e.g., at IP 192.168.1.108):
-python change_mac_final.py --ip 192.168.1.108 --mac D0:76:58:54:93:99 --reboot
+python Mac-Change-Amlogic-SKYCOM.py --ip 192.168.1.108 --mac D0:76:58:54:93:99 --reboot
 ```
 
 ### 2. Options
