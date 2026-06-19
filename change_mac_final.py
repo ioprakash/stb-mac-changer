@@ -196,13 +196,31 @@ def main():
     adb = find_adb()
     print(f"[*] Found ADB executable at: {adb}")
     
+    # Check if already connected
+    devices_stdout, _ = run_cmd([adb, "devices"])
+    already_connected = False
     if args.ip:
+        for line in devices_stdout.splitlines():
+            if args.ip in line and "device" in line:
+                already_connected = True
+                break
+                
+    if args.ip and not already_connected:
         print(f"[*] Connecting to device at {args.ip}...")
         stdout, stderr = run_cmd([adb, "connect", f"{args.ip}:5555"])
-        if stderr or "failed" in stdout.lower() or "unable" in stdout.lower():
+        # Check again if connected, ignoring stdout/stderr quirks
+        devices_stdout, _ = run_cmd([adb, "devices"])
+        for line in devices_stdout.splitlines():
+            if args.ip in line and "device" in line:
+                already_connected = True
+                break
+        if not already_connected:
             print(f"[-] Error connecting to device: {stdout} {stderr}", file=sys.stderr)
             sys.exit(1)
-        print(f"[+] ADB Connect Output: {stdout}")
+        else:
+            print(f"[+] Connected successfully: {stdout}")
+    elif args.ip and already_connected:
+        print(f"[+] Device {args.ip} is already connected.")
         
     # Get active target
     devices_stdout, _ = run_cmd([adb, "devices"])
