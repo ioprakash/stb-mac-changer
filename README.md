@@ -1,24 +1,40 @@
 # STB MAC Changer Reference & Automation
 
-This directory contains utility files and documentation to change the MAC address of an Android Set-Top Box (STB) with root access, specifically tested on **Allwinner H616/H313 (sun50iw9p1)** platform running **Android 10**.
+This repository contains utility scripts, reference configurations, and automated tools to permanently change the MAC address of Android Set-Top Boxes (STBs) with root access. It supports platforms running **Allwinner H616/H313 (sun50iw9p1)** and **Amlogic (Skycom)**.
 
 ---
 
-## Device Information (Target Specs)
-During inspection, the following hardware details were found on the connected STB:
-*   **Model**: `NETTV-1000` (google/walley/eros-p1)
-*   **Processor (SoC)**: Quad-Core ARM Cortex-A53 (Allwinner `sun50iw9p1` platform, `cupid` board)
-*   **Android OS**: Android 10 (API level 29)
-*   **RAM**: 2 GB
-*   **Firmware Kernel**: `Linux version 4.9.170 #2 SMP PREEMPT CST 2024`
-*   **Network Interfaces**:
-    *   `eth0` (Ethernet) - Original MAC: `90:0e:b3:98:01:8d`
-    *   `wlan0` (Wi-Fi) - Original MAC: `8c:ef:ab:d0:14:cd`
+## Supported Devices
+
+1. **Allwinner STBs (e.g. NETTV-1000)**
+   * **SoC**: Quad-Core ARM Cortex-A53 (Allwinner `sun50iw9p1` / `cupid` board)
+   * **OS**: Android 10 (API level 29)
+   * **Original MAC**: `90:0e:b3:98:01:8d`
+   * **Documentation**: See standard instructions below.
+
+2. **Amlogic Skycom STBs**
+   * **Documentation**: Detailed technical guide in [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md).
+   * **Automated Script**: [change_mac_final.py](file:///d:/code/stb_mac_changer_project/change_mac_final.py).
 
 ---
 
-## Reference Manual Commands
-Because the default `su` binary on this device's firmware is a legacy/basic build, it **does not support the `-c` flag** (e.g., `su -c "command"` fails with `invalid uid/gid`). Instead, all root commands must be passed to `su` via a standard input pipe (`echo "command" | su`).
+## Amlogic Skycom STB Permanent MAC Changer (Quick Start)
+
+For Amlogic-based Skycom STBs, the MAC address is locked at multiple layers (Hardware Unifykeys registers, U-Boot environment variables, and interface links). We have written a comprehensive, self-contained Python 3 script to automate the entire patching process:
+
+### Usage:
+```bash
+# Connect the STB over network ADB and execute:
+python change_mac_final.py --ip 192.168.1.108 --mac D0:76:58:54:93:99 --reboot
+```
+
+For a detailed breakdown of how this is implemented, refer to [SKYCOM_MAC_CHANGER.md](file:///d:/code/stb_mac_changer_project/SKYCOM_MAC_CHANGER.md).
+
+---
+
+## Allwinner STB Reference Manual Commands
+
+Because the default `su` binary on some legacy Allwinner firmware does **not support the `-c` flag** (e.g., `su -c "command"` fails with `invalid uid/gid`), all root commands must be passed to `su` via standard input pipe (`echo "command" | su`).
 
 ### 1. Check Root Access
 ```bash
@@ -30,16 +46,13 @@ adb shell "echo 'id' | su"
 ```bash
 adb shell "ip link"
 ```
-*Look for:* `link/ether XX:XX:XX:XX:XX:XX` under the `eth0` or `wlan0` section.
 
 ### 3. Read Boot / Kernel Arguments
 ```bash
 adb shell "echo 'cat /proc/cmdline' | su"
 ```
-*Look for:* `mac_addr=XX:XX:XX:XX:XX:XX` in the output, which shows what U-Boot passed to the kernel.
 
 ### 4. Temporary MAC Address Change (Reverts on Reboot)
-To change the MAC address temporarily without saving it to system configurations:
 ```bash
 # Bring the interface down
 adb shell "echo 'ip link set eth0 down' | su"
@@ -52,7 +65,6 @@ adb shell "echo 'ip link set eth0 up' | su"
 ```
 
 ### 5. Permanent MAC Address Change (Option A - Survives Reboot)
-To change the MAC address permanently across reboots by updating the Android system settings database:
 ```bash
 # Write new MAC address to global settings
 adb shell "settings put global ethernet_mac_addr 90:0e:b3:bc:42:fd"
@@ -68,9 +80,9 @@ adb reboot
 
 ## Advanced Permanent MAC Changer Methods (For Allwinner STBs)
 
-On Allwinner Set-Top Boxes, the MAC address is parsed by U-Boot during the boot sequence and injected into the Linux kernel cmdline. We can persist the MAC address using three methods:
+On Allwinner Set-Top Boxes, the MAC address is parsed by U-Boot during the boot sequence and injected into the Linux kernel cmdline. We can persist the MAC address using two methods:
 
-### Method 1: Automatic Startup Script (Safest & Most Practical)
+### Method 1: Automatic Startup Script
 This method keeps a startup shell script on the device that automatically runs on every boot and changes the MAC address before the network service configures it.
 
 #### Setup Process:
@@ -92,7 +104,7 @@ This method keeps a startup shell script on the device that automatically runs o
 
 ---
 
-### Method 2: U-Boot Env Partition Patching (Medium Risk)
+### Method 2: U-Boot Env Partition Patching
 The boot arguments (visible in `/proc/cmdline`) contain `mac_addr=90:0E:B3:98:01:8D`. This is read directly from the `env` partition (`/dev/block/mmcblk0p2`). 
 
 This partition has a **CRC32 Checksum** header. If the checksum doesn't match the variables block, the bootloader resets the environment, causing a boot loop or entering recovery.
@@ -123,49 +135,18 @@ We have created an automated patcher script: [patch_env.py](file:///D:/code/stb_
 
 ---
 
-### Method 3: Private Partition Modification (High Risk)
-Allwinner systems often store physical calibration keys (e.g., Wi-Fi, Ethernet MAC, Serial Number) inside `/dev/block/mmcblk0p12` (`private` partition).
-
-#### Process to Check/Patch:
-1. **Dump the Private Partition**:
-   ```bash
-   adb shell "echo 'dd if=/dev/block/mmcblk0p12 bs=1024 count=128' | su" > private.img
-   ```
-2. **Analyze for MAC entries**:
-   You can search for the ASCII representation of the original MAC (`90:0E:B3:98:01:8D` or `900eb398018d`) using a hex editor or `strings`:
-   ```bash
-   strings private.img | grep -i 90
-   ```
-3. **Patch and flash**:
-   Modify the hex location of the MAC in `private.img` using a hex editor, and flash it back using:
-   ```bash
-   adb push private_patched.img /data/local/tmp/private_patched.img
-   adb shell "echo 'dd if=/data/local/tmp/private_patched.img of=/dev/block/mmcblk0p12' | su"
-   ```
-   *Note: Modifying this partition carries the highest risk of wiping your device's activation keys.*
-
----
-
 ## Automation Utilities
 
 ### 1. MAC Address Auto-Changer (`change_mac.py`)
-`change_mac.py` is a Python 3 CLI script that automates the Android system settings and temporary changes.
-
-#### Usage:
-- Get help: `python change_mac.py --help`
-- Apply changes: `python change_mac.py --mac 90:0e:b3:bc:42:fd --mode both --reboot`
+`change_mac.py` is a Python 3 CLI script that automates the Android system settings and temporary changes for Allwinner devices.
+* Usage: `python change_mac.py --mac 90:0e:b3:bc:42:fd --mode both --reboot`
 
 ### 2. U-Boot env Patcher (`patch_env.py` - Standard/Allwinner)
 `patch_env.py` handles standard U-Boot CRC32 checks and variable manipulation.
-
-#### Usage:
-- Dump env contents: `python patch_env.py env.img --dump`
-- Modify a variable: `python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd`
+* Usage: `python patch_env.py env.img --set mac_addr=90:0e:b3:bc:42:fd`
 
 ### 3. Amlogic U-Boot Patcher (`patch_env_amlogic.py` - Skycom/Amlogic)
-`patch_env_amlogic.py` handles auto-detection of the 64KB environment block within the 8MB partition dump, and automatically patches the U-Boot `cmdline_keys` and `storeargs` macros to inject the new MAC address directly (bypassing the secure key/eFuse reading).
+`patch_env_amlogic.py` handles auto-detection of the 64KB environment block within the 8MB partition dump, and automatically patches the U-Boot `cmdline_keys` and `storeargs` macros to inject the new MAC address directly.
+* Usage: `python patch_env_amlogic.py skycom_env.img --new-mac D0:76:58:54:93:99 --output skycom_env_patched.img`
 
-#### Usage:
-- Dump env contents: `python patch_env_amlogic.py skycom_env.img --dump --new-mac D0:76:58:54:93:99`
-- Patch env contents: `python patch_env_amlogic.py skycom_env.img --new-mac D0:76:58:54:93:99 --output skycom_env_patched.img`
 
